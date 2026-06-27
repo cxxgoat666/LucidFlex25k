@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Flex 25K Practice Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="market-bg" aria-hidden="true">
+      <div class="ticker-track ticker-one">NQ +124.50 ES -18.25 YM +61 MNQ +42.00 CL -0.42 GC +9.80</div>
+      <div class="ticker-track ticker-two">TARGET 26,250 FLOOR EOD MAX LOSS 24,000 CONSISTENCY 50%</div>
+    </div>
+
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-block">
+          <img class="brand-logo" src="assets/xrt-logo.png" alt="xrt">
+          <div>
+            <p class="eyebrow">Practice account</p>
+            <h1>Flex 25K</h1>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="Dashboard pages">
+          <button class="active" type="button" data-view-target="overview">Overview</button>
+          <button type="button" data-view-target="entry">Trade Entry</button>
+          <button type="button" data-view-target="calendar">P&L Calendar</button>
+          <button type="button" data-view-target="journal">Journal</button>
+          <button type="button" data-view-target="rules">Rules</button>
+        </nav>
+
+        <section class="rule-card">
+          <p class="eyebrow">Challenge rules</p>
+          <dl>
+            <div><dt>Start</dt><dd>$25,000</dd></div>
+            <div><dt>Target</dt><dd>$1,250</dd></div>
+            <div><dt>Max loss</dt><dd>$1,000 EOD</dd></div>
+            <div><dt>Daily limit</dt><dd>None</dd></div>
+            <div><dt>Max size</dt><dd>2 mini / 20 micro</dd></div>
+          </dl>
+        </section>
+        <div class="trademark">@xrt</div>
+      </aside>
+
+      <main>
+        <header class="topbar">
+          <div>
+            <p id="pageEyebrow" class="eyebrow">Challenge monitor</p>
+            <h2 id="pageTitle">Overview</h2>
+          </div>
+          <div class="top-actions">
+            <button id="exportCsv" class="ghost-button" type="button">Export</button>
+            <label class="ghost-button file-button">
+              Import
+              <input id="importCsv" type="file" accept=".csv,text/csv">
+            </label>
+            <button id="resetData" class="danger-button" type="button">Reset</button>
+          </div>
+        </header>
+
+        <section class="view active" data-view="overview">
+          <div class="overview-grid" aria-label="Challenge overview">
+            <article class="status-panel primary-status">
+              <div>
+                <p class="eyebrow">Account balance</p>
+                <strong id="currentBalance">$25,000.00</strong>
+                <span id="balanceChange" class="metric-note">$0.00 profit</span>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-ring" aria-label="Profit target progress">
+                  <span id="targetPercent">0%</span>
+                </div>
+              </div>
+            </article>
+
+            <article class="status-panel">
+              <p class="eyebrow">Target remaining</p>
+              <strong id="targetRemaining">$1,250.00</strong>
+              <span class="metric-note">Pass target: $26,250.00</span>
+            </article>
+
+            <article class="status-panel">
+              <p class="eyebrow">Trailing threshold</p>
+              <strong id="drawdownFloor">$24,000.00</strong>
+              <span id="drawdownRoom" class="metric-note">$1,000.00 room</span>
+            </article>
+
+            <article class="status-panel">
+              <p id="consistencyCardLabel" class="eyebrow">Consistency</p>
+              <strong id="consistencyPercent">0%</strong>
+              <span id="consistencyNote" class="metric-note">Largest day must stay at or below 50%</span>
+            </article>
+          </div>
+
+          <article id="failureAlert" class="failure-alert" hidden>
+            <div>
+              <p class="eyebrow">Account status</p>
+              <strong>Challenge failed</strong>
+              <span id="failureAlertText">Your EOD balance breached the trailing drawdown threshold.</span>
+            </div>
+          </article>
+
+          <article class="panel target-progress-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Profit target</p>
+                <h3>Challenge progress</h3>
+              </div>
+              <span id="targetProgressLabel" class="pill">$0.00 / $1,250.00</span>
+            </div>
+            <div class="target-track-wrap">
+              <div class="target-track">
+                <div id="targetDangerFill" class="target-danger-fill"></div>
+                <div id="targetBarFill" class="target-fill"></div>
+                <div id="drawdownMarker" class="target-marker drawdown-marker"><span>Fail</span></div>
+                <div id="startMarker" class="target-marker start-marker"><span>Start</span></div>
+                <div id="targetBarMarker" class="target-marker current-marker"><span>Now</span></div>
+              </div>
+              <div class="target-scale">
+                <span id="targetDrawdownLabel">$24,000 fail</span>
+                <span id="targetStartLabel">$25,000 start</span>
+                <span id="targetCurrentLabel">$25,000 current</span>
+                <span id="targetFinishLabel">$26,250 target</span>
+              </div>
+            </div>
+          </article>
+
+          <div class="dashboard-grid">
+            <article class="panel chart-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">EOD curve</p>
+                  <h3>Balance and trailing limit</h3>
+                </div>
+                <span id="tradeDayCount" class="pill">0 trade days</span>
+              </div>
+              <canvas id="equityChart" width="900" height="360" aria-label="Equity curve chart"></canvas>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Pass readiness</p>
+                  <h3>Objective checklist</h3>
+                </div>
+              </div>
+              <div id="objectiveList" class="objective-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" data-view="entry">
+          <div class="entry-layout">
+            <article class="panel entry-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Trade entry</p>
+                  <h3>Build a trading day</h3>
+                </div>
+                <span id="entryDayPnl" class="pill">$0.00 day P&L</span>
+              </div>
+
+              <form id="tradeForm" class="trade-form">
+                <label>
+                  Trading date
+                  <input id="tradeDate" name="date" type="date" required>
+                </label>
+                <label>
+                  Trades made
+                  <input id="tradeCount" name="tradeCount" type="number" min="1" max="50" step="1" value="1" required>
+                </label>
+                <label>
+                  Market session
+                  <select id="session" name="session">
+                    <option>New York AM</option>
+                    <option>New York PM</option>
+                    <option>London</option>
+                    <option>Asia</option>
+                    <option>Mixed</option>
+                  </select>
+                </label>
+                <label class="wide">
+                  Day notes
+                  <input id="dayNotes" name="dayNotes" type="text" maxlength="150" placeholder="Psychology, execution, rule context">
+                </label>
+
+                <div id="tradeRows" class="trade-rows wide-full"></div>
+                <button class="primary-button" type="submit">Save trading day</button>
+              </form>
+            </article>
+
+            <aside class="panel day-preview">
+              <p class="eyebrow">Day preview</p>
+              <div id="dayPreview"></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" data-view="calendar">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">P&L calendar</p>
+                <h3 id="calendarTitle">Trading month</h3>
+              </div>
+              <span id="calendarWinRate" class="pill">0% daily win rate</span>
+              <label class="month-filter">
+                Month
+                <input id="calendarMonthPicker" type="month">
+              </label>
+              <div class="segmented">
+                <button id="prevMonth" type="button">Prev</button>
+                <button id="todayMonth" type="button">Today</button>
+                <button id="nextMonth" type="button">Next</button>
+              </div>
+            </div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+          </article>
+        </section>
+
+        <section class="view" data-view="journal">
+          <div class="journal-layout">
+            <article class="panel journal-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Trading data</p>
+                  <h3>Journal</h3>
+                </div>
+                <span id="journalSummary" class="pill">No entries yet</span>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Trades</th>
+                      <th>Net P&L</th>
+                      <th>EOD balance</th>
+                      <th>Largest size</th>
+                      <th>Win rate</th>
+                      <th>Rule flags</th>
+                      <th>Notes</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="journalRows"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="panel checklist-panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Personal rules</p>
+                  <h3>Journal checklist</h3>
+                </div>
+              </div>
+              <form id="ruleForm" class="rule-form">
+                <input id="ruleInput" type="text" maxlength="100" placeholder="Add your rule">
+                <button class="primary-button" type="submit">Add</button>
+              </form>
+              <div id="personalRules" class="personal-rules"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" data-view="rules">
+          <div class="rules-layout">
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Lucid Flex style</p>
+                  <h3>Tracked challenge rules</h3>
+                </div>
+              </div>
+              <div class="rules-grid">
+                <div><span>Starting balance</span><strong>$25,000</strong></div>
+                <div><span>Profit target</span><strong>$1,250</strong></div>
+                <div><span>EOD max loss</span><strong>$1,000</strong></div>
+                <div><span>Daily loss limit</span><strong>None</strong></div>
+                <div><span>Max contracts</span><strong>2 mini / 20 micro</strong></div>
+                <div><span>Consistency</span><strong>50%</strong></div>
+              </div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Rule status</p>
+                  <h3>Current account check</h3>
+                </div>
+              </div>
+              <div id="rulesObjectiveList" class="objective-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <footer class="source-note">
+          Rules were checked against Lucid Trading Help Center pages on June 27, 2026. Confirm your own order page before using this as an official rule source.
+        </footer>
+      </main>
+    </div>
+
+    <template id="emptyRow">
+      <tr>
+        <td colspan="9" class="empty-state">No trading days logged yet. Add one on the Trade Entry page.</td>
+      </tr>
+    </template>
+
+    <template id="tradeRowTemplate">
+      <div class="trade-line">
+        <div class="trade-line-title">Trade <span data-trade-number>1</span></div>
+        <label>
+          Instrument
+          <input data-field="instrument" type="text" maxlength="16" placeholder="NQ">
+        </label>
+        <label>
+          Direction
+          <select data-field="direction">
+            <option>Long</option>
+            <option>Short</option>
+          </select>
+        </label>
+        <label>
+          Session
+          <select data-field="tradeSession">
+            <option>New York AM</option>
+            <option>New York PM</option>
+            <option>London</option>
+            <option>Asia</option>
+            <option>Mixed</option>
+          </select>
+        </label>
+        <label>
+          P&L
+          <input data-field="pnl" type="number" step="0.01" placeholder="125.00" required>
+        </label>
+        <label>
+          Size
+          <input data-field="size" type="number" min="0" step="1" value="1" required>
+        </label>
+        <label>
+          Type
+          <select data-field="type">
+            <option value="mini">Mini</option>
+            <option value="micro">Micro</option>
+          </select>
+        </label>
+        <label class="wide">
+          Setup
+          <input data-field="setup" type="text" maxlength="80" placeholder="Breakout, pullback, news, revenge">
+        </label>
+      </div>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
