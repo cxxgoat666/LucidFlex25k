@@ -1,0 +1,37 @@
+# Flex 25K Practice Dashboard
+
+A standalone practice dashboard for tracking a Lucid Flex-style 25K futures evaluation without using Lucid branding.
+
+## Run
+
+Open `index.html` in a browser, or serve the folder locally:
+
+```powershell
+python -m http.server 4173 --bind 127.0.0.1
+```
+
+Then visit `http://127.0.0.1:4173/`.
+
+## Tracked Rules
+
+- Starting balance: `$25,000`
+- Profit target: `$1,250`
+- EOD max loss: `$1,000`
+- Daily loss limit: none
+- Max size: `2` mini contracts or `20` micro contracts
+- Consistency: largest winning day must stay at or below `50%` of total profit
+- Minimum trading days: `2`
+
+Rules were checked against Lucid Trading Help Center pages on June 27, 2026. Confirm the exact current rules on your own Lucid order/account page before treating the dashboard as official.
+
+## Features
+
+- Page-style dashboard navigation for Overview, Trade Entry, P&L Calendar, Journal, and Rules
+- Multi-trade day entry with separate P&L, instrument, direction, session, size, type, and setup fields for each trade
+- Local browser storage
+- CSV import and export
+- Target progress, EOD trailing threshold, consistency, trading days, and position-size checks
+- Equity curve with target and trailing limit lines
+- Monthly P&L calendar with aggregated daily results and month filtering
+- Editable personal trading-rule checklist in the Journal page
+- Animated market-style background
