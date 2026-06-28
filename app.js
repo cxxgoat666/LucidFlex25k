@@ -55,6 +55,8 @@ const els = {
   targetFinishLabel: document.querySelector("#targetFinishLabel"),
   failureAlert: document.querySelector("#failureAlert"),
   failureAlertText: document.querySelector("#failureAlertText"),
+  passAlert: document.querySelector("#passAlert"),
+  passAlertText: document.querySelector("#passAlertText"),
   targetRemaining: document.querySelector("#targetRemaining"),
   drawdownFloor: document.querySelector("#drawdownFloor"),
   drawdownRoom: document.querySelector("#drawdownRoom"),
@@ -492,6 +494,11 @@ function renderStats(metrics) {
   els.failureAlert.hidden = !metrics.failed;
   els.failureAlertText.textContent = metrics.failed
     ? `Your EOD balance ${metrics.breachDay ? `on ${metrics.breachDay} ` : ""}hit ${currency.format(metrics.balance)} against a trailing threshold of ${currency.format(metrics.floor)}.`
+    : "";
+  // Challenge pass alert experiment: remove this block with matching HTML/CSS to revert.
+  els.passAlert.hidden = !metrics.passReady || metrics.failed;
+  els.passAlertText.textContent = metrics.passReady && !metrics.failed
+    ? `Target hit at ${currency.format(metrics.balance)} with ${metrics.tradeDays} trading days logged, position size respected, drawdown intact, and consistency inside the pass rules.`
     : "";
   els.consistencyPercent.textContent = metrics.accountProfit > 0 ? `${Math.round(metrics.consistency * 100)}%` : "0%";
   els.consistencyNote.textContent = metrics.largestProfitDay

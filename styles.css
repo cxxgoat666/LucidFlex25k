@@ -540,31 +540,54 @@ main {
   line-height: 1.5;
 }
 
-.failure-alert {
+.failure-alert,
+.pass-alert {
   display: grid;
   margin-bottom: 14px;
   padding: 18px 20px;
-  border: 1px solid rgba(255, 107, 122, 0.56);
   border-radius: 8px;
+}
+
+.failure-alert {
+  border: 1px solid rgba(255, 107, 122, 0.56);
   background:
     linear-gradient(135deg, rgba(255, 107, 122, 0.22), rgba(22, 27, 29, 0.94)),
     var(--panel);
   box-shadow: 0 22px 90px rgba(255, 107, 122, 0.16);
 }
 
-.failure-alert[hidden] {
+/* Challenge pass alert experiment: remove this block with matching HTML/JS to revert. */
+.pass-alert {
+  border: 1px solid rgba(57, 217, 138, 0.58);
+  background:
+    linear-gradient(135deg, rgba(57, 217, 138, 0.24), rgba(22, 27, 29, 0.94)),
+    var(--panel);
+  box-shadow: 0 22px 90px rgba(57, 217, 138, 0.16);
+}
+
+.failure-alert[hidden],
+.pass-alert[hidden] {
   display: none;
 }
 
-.failure-alert strong {
+.failure-alert strong,
+.pass-alert strong {
   display: block;
   margin-bottom: 6px;
-  color: var(--red);
   font-size: clamp(1.6rem, 3vw, 2.35rem);
   text-transform: uppercase;
 }
 
-.failure-alert span {
+.failure-alert strong {
+  color: var(--red);
+}
+
+.pass-alert strong {
+  color: var(--green);
+}
+
+.failure-alert span,
+.pass-alert span {
   color: var(--text);
 }
 
