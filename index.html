@@ -17,8 +17,8 @@
         <div class="brand-block">
           <img class="brand-logo" src="xrt-logo.png" alt="xrt">
           <div>
-            <p class="eyebrow">Practice account</p>
-            <h1>Flex 25K</h1>
+            <p id="brandEyebrow" class="eyebrow">Practice account</p>
+            <h1 id="brandTitle">Flex 25K</h1>
           </div>
         </div>
 
@@ -27,12 +27,13 @@
           <button type="button" data-view-target="entry">Trade Entry</button>
           <button type="button" data-view-target="calendar">P&L Calendar</button>
           <button type="button" data-view-target="journal">Journal</button>
+          <button type="button" data-view-target="payout" data-funded-only hidden>Payout</button>
           <button type="button" data-view-target="rules">Rules</button>
         </nav>
 
         <section class="rule-card">
-          <p class="eyebrow">Challenge rules</p>
-          <dl>
+          <p id="sideRulesTitle" class="eyebrow">Challenge rules</p>
+          <dl id="sideRulesList">
             <div><dt>Start</dt><dd>$25,000</dd></div>
             <div><dt>Target</dt><dd>$1,250</dd></div>
             <div><dt>Max loss</dt><dd>$1,000 EOD</dd></div>
@@ -50,6 +51,11 @@
             <h2 id="pageTitle">Overview</h2>
           </div>
           <div class="top-actions">
+            <!-- Account mode experiment: remove this control and matching JS/CSS blocks to revert. -->
+            <div class="account-switch" aria-label="Account mode">
+              <button id="evalMode" class="active" type="button" data-account-mode="evaluation">Evaluation</button>
+              <button id="fundedMode" type="button" data-account-mode="funded">Funded</button>
+            </div>
             <button id="exportCsv" class="ghost-button" type="button">Export</button>
             <label class="ghost-button file-button">
               Import
@@ -110,7 +116,7 @@
             </div>
           </article>
 
-          <article class="panel target-progress-panel">
+          <article class="panel target-progress-panel" data-eval-only>
             <div class="panel-heading">
               <div>
                 <p class="eyebrow">Profit target</p>
@@ -135,7 +141,7 @@
             </div>
           </article>
 
-          <article class="panel consistency-panel">
+          <article class="panel consistency-panel" data-eval-only>
             <div class="panel-heading">
               <div>
                 <p class="eyebrow">50% consistency</p>
@@ -166,6 +172,40 @@
               <span id="consistencyTrackLabel">0% of allowed 50%</span>
             </div>
             <p id="consistencyExplanation" class="consistency-explanation">Your biggest winning day should be no more than half of your total profit, with a small pass cushion when it is close.</p>
+          </article>
+
+          <!-- Account mode experiment: funded payout overview, remove with matching JS/CSS to revert. -->
+          <article class="panel funded-progress-panel" data-funded-only hidden>
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Payout readiness</p>
+                <h3>Funded payout cycle</h3>
+              </div>
+              <span id="fundedPayoutLabel" class="pill">$0.00 available</span>
+            </div>
+            <div class="funded-progress-grid">
+              <div>
+                <span>Qualifying days</span>
+                <strong id="fundedQualifyingDays">0 / 5</strong>
+              </div>
+              <div>
+                <span>Cycle profit</span>
+                <strong id="fundedCycleProfit">$0.00</strong>
+              </div>
+              <div>
+                <span>Trader split</span>
+                <strong>90%</strong>
+              </div>
+              <div>
+                <span>Status</span>
+                <strong id="fundedPayoutStatus">Building</strong>
+              </div>
+            </div>
+            <div class="consistency-track funded-track" aria-label="Funded qualifying day progress">
+              <div id="fundedPayoutFill"></div>
+              <span id="fundedPayoutTrackLabel">0 of 5 qualifying days</span>
+            </div>
+            <p id="fundedPayoutExplanation" class="consistency-explanation">Log 5 separate days with at least $100 profit and stay net positive in the payout cycle.</p>
           </article>
 
           <div class="dashboard-grid">
@@ -244,12 +284,12 @@
             <div class="panel-heading">
               <!-- Calendar header experiment: remove this wrapper and matching CSS/JS changes to revert. -->
               <div class="calendar-title-control">
-                <button id="prevMonth" class="calendar-arrow" type="button" aria-label="Previous month">‹</button>
+                <button id="prevMonth" class="calendar-arrow" type="button" aria-label="Previous month">&lt;</button>
                 <div>
                 <p class="eyebrow">P&L calendar</p>
                 <h3 id="calendarTitle">Trading month</h3>
                 </div>
-                <button id="nextMonth" class="calendar-arrow" type="button" aria-label="Next month">›</button>
+                <button id="nextMonth" class="calendar-arrow" type="button" aria-label="Next month">&gt;</button>
               </div>
               <span id="calendarWinRate" class="pill">0% trade win rate</span>
               <label class="month-filter">
@@ -322,16 +362,49 @@
           </article>
         </section>
 
+        <!-- Account mode experiment: remove this funded payout section and matching JS/CSS to revert. -->
+        <section class="view" data-view="payout" data-funded-only hidden>
+          <div class="payout-layout">
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Funded payout</p>
+                  <h3>Request simulator</h3>
+                </div>
+                <span id="payoutEligibilityPill" class="pill">Not eligible</span>
+              </div>
+              <div class="funded-progress-grid">
+                <div><span>Qualifying days</span><strong id="payoutQualifyingDays">0 / 5</strong></div>
+                <div><span>Cycle profit</span><strong id="payoutCycleProfit">$0.00</strong></div>
+                <div><span>Estimated trader share</span><strong id="payoutTraderShare">$0.00</strong></div>
+                <div><span>Last payout</span><strong id="payoutLastDate">None</strong></div>
+              </div>
+              <button id="recordPayout" class="primary-button" type="button">Record simulated payout</button>
+              <p id="payoutHelp" class="consistency-explanation">Payouts unlock after 5 separate $100+ winning days and positive net profit for the current cycle.</p>
+            </article>
+
+            <article class="panel">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">History</p>
+                  <h3>Simulated payouts</h3>
+                </div>
+              </div>
+              <div id="payoutHistory" class="objective-list"></div>
+            </article>
+          </div>
+        </section>
+
         <section class="view" data-view="rules">
           <div class="rules-layout">
             <article class="panel">
               <div class="panel-heading">
                 <div>
-                  <p class="eyebrow">Lucid Flex style</p>
-                  <h3>Tracked challenge rules</h3>
+                  <p id="rulesEyebrow" class="eyebrow">Lucid Flex style</p>
+                  <h3 id="rulesTitle">Tracked challenge rules</h3>
                 </div>
               </div>
-              <div class="rules-grid">
+              <div id="rulesGrid" class="rules-grid">
                 <div><span>Starting balance</span><strong>$25,000</strong></div>
                 <div><span>Profit target</span><strong>$1,250</strong></div>
                 <div><span>EOD max loss</span><strong>$1,000</strong></div>
@@ -354,7 +427,7 @@
         </section>
 
         <footer class="source-note">
-          Rules were checked against Lucid Trading Help Center pages on June 27, 2026. Confirm your own order page before using this as an official rule source.
+          Evaluation and funded payout rules were checked against Lucid Trading Help Center pages on June 28, 2026. Confirm your own order page before using this as an official rule source.
         </footer>
       </main>
     </div>

@@ -1,4 +1,8 @@
 const RULES = {
+  mode: "evaluation",
+  label: "Evaluation",
+  accountEyebrow: "Challenge monitor",
+  accountTitle: "Overview",
   startingBalance: 25000,
   profitTarget: 1250,
   maxLossLimit: 1000,
@@ -7,21 +11,75 @@ const RULES = {
   maxMini: 2,
   maxMicro: 20,
   minTradingDays: 2,
+  payoutMinProfitDays: 0,
+  payoutMinDayProfit: 0,
+  payoutMinRequest: 0,
+  payoutMaxRequest: 0,
+  payoutMaxProfitShare: 0,
+  payoutSplit: 0,
   storageKey: "flex25k-practice-journal",
+  payoutKey: "flex25k-payouts",
   rulesKey: "flex25k-personal-rules",
   tradeNotesKey: "flex25k-trade-review-notes-v2"
 };
+
+const RULE_SETS = {
+  evaluation: {
+    mode: "evaluation",
+    label: "Evaluation",
+    accountEyebrow: "Challenge monitor",
+    accountTitle: "Overview",
+    storageKey: "flex25k-practice-journal",
+    tradeNotesKey: "flex25k-trade-review-notes-v2",
+    payoutKey: "flex25k-payouts",
+    profitTarget: 1250,
+    consistencyLimit: 0.5,
+    consistencyCushionLimit: 0.52,
+    minTradingDays: 2,
+    payoutMinProfitDays: 0,
+    payoutMinDayProfit: 0,
+    payoutMinRequest: 0,
+    payoutMaxRequest: 0,
+    payoutMaxProfitShare: 0,
+    payoutSplit: 0
+  },
+  funded: {
+    mode: "funded",
+    label: "Funded",
+    accountEyebrow: "Funded account",
+    accountTitle: "Funded Overview",
+    storageKey: "flex25k-funded-journal",
+    tradeNotesKey: "flex25k-funded-trade-review-notes",
+    payoutKey: "flex25k-funded-payouts",
+    profitTarget: 0,
+    consistencyLimit: 0,
+    consistencyCushionLimit: 0,
+    minTradingDays: 0,
+    payoutMinProfitDays: 5,
+    payoutMinDayProfit: 100,
+    payoutMinRequest: 500,
+    payoutMaxRequest: 1000,
+    payoutMaxProfitShare: 0.5,
+    payoutSplit: 0.9
+  }
+};
+
+const MODE_KEY = "flex25k-account-mode";
+Object.assign(RULES, RULE_SETS[loadAccountMode()] || RULE_SETS.evaluation);
 
 const pageMeta = {
   overview: ["Challenge monitor", "Overview"],
   entry: ["Daily builder", "Trade Entry"],
   calendar: ["Monthly performance", "P&L Calendar"],
   journal: ["Trading data", "Journal"],
+  payout: ["Payout cycle", "Payout"],
   rules: ["Account limits", "Rules"]
 };
 
 const state = {
+  accountMode: RULES.mode,
   days: loadDays(),
+  payouts: loadPayouts(),
   personalRules: loadPersonalRules(),
   tradeNotes: loadTradeNotes(),
   calendarDate: new Date()
@@ -30,6 +88,13 @@ const state = {
 const els = {
   nav: document.querySelectorAll("[data-view-target]"),
   views: document.querySelectorAll("[data-view]"),
+  modeButtons: document.querySelectorAll("[data-account-mode]"),
+  fundedOnly: document.querySelectorAll("[data-funded-only]"),
+  evalOnly: document.querySelectorAll("[data-eval-only]"),
+  brandEyebrow: document.querySelector("#brandEyebrow"),
+  brandTitle: document.querySelector("#brandTitle"),
+  sideRulesTitle: document.querySelector("#sideRulesTitle"),
+  sideRulesList: document.querySelector("#sideRulesList"),
   pageEyebrow: document.querySelector("#pageEyebrow"),
   pageTitle: document.querySelector("#pageTitle"),
   form: document.querySelector("#tradeForm"),
@@ -60,6 +125,7 @@ const els = {
   targetRemaining: document.querySelector("#targetRemaining"),
   drawdownFloor: document.querySelector("#drawdownFloor"),
   drawdownRoom: document.querySelector("#drawdownRoom"),
+  consistencyCardLabel: document.querySelector("#consistencyCardLabel"),
   consistencyPercent: document.querySelector("#consistencyPercent"),
   consistencyNote: document.querySelector("#consistencyNote"),
   consistencyStatus: document.querySelector("#consistencyStatus"),
@@ -70,9 +136,19 @@ const els = {
   consistencyFill: document.querySelector("#consistencyFill"),
   consistencyTrackLabel: document.querySelector("#consistencyTrackLabel"),
   consistencyExplanation: document.querySelector("#consistencyExplanation"),
+  fundedPayoutLabel: document.querySelector("#fundedPayoutLabel"),
+  fundedQualifyingDays: document.querySelector("#fundedQualifyingDays"),
+  fundedCycleProfit: document.querySelector("#fundedCycleProfit"),
+  fundedPayoutStatus: document.querySelector("#fundedPayoutStatus"),
+  fundedPayoutFill: document.querySelector("#fundedPayoutFill"),
+  fundedPayoutTrackLabel: document.querySelector("#fundedPayoutTrackLabel"),
+  fundedPayoutExplanation: document.querySelector("#fundedPayoutExplanation"),
   tradeDayCount: document.querySelector("#tradeDayCount"),
   objectiveList: document.querySelector("#objectiveList"),
   rulesObjectiveList: document.querySelector("#rulesObjectiveList"),
+  rulesEyebrow: document.querySelector("#rulesEyebrow"),
+  rulesTitle: document.querySelector("#rulesTitle"),
+  rulesGrid: document.querySelector("#rulesGrid"),
   journalRows: document.querySelector("#journalRows"),
   journalSummary: document.querySelector("#journalSummary"),
   emptyRow: document.querySelector("#emptyRow"),
@@ -90,6 +166,14 @@ const els = {
   exportCsv: document.querySelector("#exportCsv"),
   importCsv: document.querySelector("#importCsv"),
   resetData: document.querySelector("#resetData"),
+  recordPayout: document.querySelector("#recordPayout"),
+  payoutEligibilityPill: document.querySelector("#payoutEligibilityPill"),
+  payoutQualifyingDays: document.querySelector("#payoutQualifyingDays"),
+  payoutCycleProfit: document.querySelector("#payoutCycleProfit"),
+  payoutTraderShare: document.querySelector("#payoutTraderShare"),
+  payoutLastDate: document.querySelector("#payoutLastDate"),
+  payoutHelp: document.querySelector("#payoutHelp"),
+  payoutHistory: document.querySelector("#payoutHistory"),
   ruleForm: document.querySelector("#ruleForm"),
   ruleInput: document.querySelector("#ruleInput"),
   personalRules: document.querySelector("#personalRules"),
@@ -108,6 +192,11 @@ render();
 
 els.nav.forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.viewTarget));
+});
+
+// Account mode experiment: remove these listeners and matching mode helpers to revert.
+els.modeButtons.forEach((button) => {
+  button.addEventListener("click", () => setAccountMode(button.dataset.accountMode));
 });
 
 els.tradeCount.addEventListener("input", () => {
@@ -155,13 +244,15 @@ els.journalRows.addEventListener("click", (event) => {
 });
 
 els.resetData.addEventListener("click", () => {
-  if (!state.days.length && !state.personalRules.length) return;
-  const confirmed = window.confirm("Clear all saved trading days and checklist rules?");
+  if (!state.days.length && !state.personalRules.length && !state.payouts.length) return;
+  const confirmed = window.confirm(`Clear saved ${RULES.label.toLowerCase()} trading days, payout records, and checklist rules?`);
   if (!confirmed) return;
   state.days = [];
+  state.payouts = [];
   state.personalRules = defaultPersonalRules();
   state.tradeNotes = {};
   saveDays();
+  savePayouts();
   savePersonalRules();
   saveTradeNotes();
   render();
@@ -169,6 +260,24 @@ els.resetData.addEventListener("click", () => {
 
 els.exportCsv.addEventListener("click", exportCsv);
 els.importCsv.addEventListener("change", importCsv);
+
+els.recordPayout.addEventListener("click", () => {
+  if (RULES.mode !== "funded") return;
+  const metrics = getMetrics();
+  if (!metrics.payoutEligible) return;
+  els.recordPayout.disabled = true;
+  state.payouts.push({
+    id: crypto.randomUUID(),
+    date: toDateKey(new Date()),
+    cutoffDate: metrics.payoutCutoffDate,
+    gross: metrics.payoutCycleProfit,
+    request: metrics.payoutRequestMax,
+    traderShare: metrics.payoutTraderShare,
+    qualifyingDays: metrics.payoutQualifyingDays
+  });
+  savePayouts();
+  render();
+});
 
 els.prevMonth.addEventListener("click", () => shiftMonth(-1));
 els.todayMonth.addEventListener("click", () => {
@@ -270,25 +379,97 @@ function saveTradeNoteInput(event) {
 
 window.addEventListener("resize", () => drawChart(getMetrics()));
 
+// Account mode experiment: remove this function and RULE_SETS/MODE_KEY changes to revert.
+function setAccountMode(mode) {
+  if (!RULE_SETS[mode] || mode === state.accountMode) return;
+  saveDays();
+  saveTradeNotes();
+  savePayouts();
+  state.accountMode = mode;
+  localStorage.setItem(MODE_KEY, mode);
+  Object.assign(RULES, RULE_SETS[mode]);
+  state.days = loadDays();
+  state.tradeNotes = loadTradeNotes();
+  state.payouts = loadPayouts();
+  state.calendarDate = new Date();
+  if (mode === "evaluation" && document.querySelector(".view.active")?.dataset.view === "payout") {
+    setView("overview");
+  }
+  renderTradeRows();
+  render();
+  setView(document.querySelector(".view.active")?.dataset.view || "overview");
+}
+
 function setView(viewName) {
+  if (viewName === "payout" && RULES.mode !== "funded") viewName = "overview";
   els.nav.forEach((button) => button.classList.toggle("active", button.dataset.viewTarget === viewName));
   els.views.forEach((view) => view.classList.toggle("active", view.dataset.view === viewName));
   const [eyebrow, title] = pageMeta[viewName] || pageMeta.overview;
-  els.pageEyebrow.textContent = eyebrow;
-  els.pageTitle.textContent = title;
+  els.pageEyebrow.textContent = viewName === "overview" ? RULES.accountEyebrow : eyebrow;
+  els.pageTitle.textContent = viewName === "overview" ? RULES.accountTitle : title;
   if (viewName === "overview") drawChart(getMetrics());
 }
 
 function render() {
   const metrics = getMetrics();
+  renderAccountMode(metrics);
   renderStats(metrics);
   renderObjectives(metrics);
   renderJournal(metrics);
   renderDailyNotes(metrics);
   renderCalendar(metrics);
   renderPersonalRules();
+  renderPayout(metrics);
   updateEntryPreview();
   drawChart(metrics);
+}
+
+// Account mode experiment: remove this renderer and matching HTML/CSS to revert.
+function renderAccountMode(metrics) {
+  const funded = RULES.mode === "funded";
+  document.body.dataset.accountMode = RULES.mode;
+  els.modeButtons.forEach((button) => button.classList.toggle("active", button.dataset.accountMode === RULES.mode));
+  els.fundedOnly.forEach((node) => { node.hidden = !funded; });
+  els.evalOnly.forEach((node) => { node.hidden = funded; });
+  els.brandEyebrow.textContent = funded ? "Funded account" : "Practice account";
+  els.brandTitle.textContent = funded ? "Flex 25K Funded" : "Flex 25K";
+  els.sideRulesTitle.textContent = funded ? "Funded rules" : "Challenge rules";
+  els.sideRulesList.innerHTML = funded
+    ? `
+      <div><dt>Start</dt><dd>$25,000</dd></div>
+      <div><dt>Payout days</dt><dd>5 x $100+</dd></div>
+      <div><dt>Split</dt><dd>90 / 10</dd></div>
+      <div><dt>Max loss</dt><dd>$1,000 EOD</dd></div>
+      <div><dt>Max size</dt><dd>2 mini / 20 micro</dd></div>
+    `
+    : `
+      <div><dt>Start</dt><dd>$25,000</dd></div>
+      <div><dt>Target</dt><dd>$1,250</dd></div>
+      <div><dt>Max loss</dt><dd>$1,000 EOD</dd></div>
+      <div><dt>Daily limit</dt><dd>None</dd></div>
+      <div><dt>Max size</dt><dd>2 mini / 20 micro</dd></div>
+    `;
+  els.rulesEyebrow.textContent = funded ? "Lucid Flex funded style" : "Lucid Flex style";
+  els.rulesTitle.textContent = funded ? "Tracked funded rules" : "Tracked challenge rules";
+  els.rulesGrid.innerHTML = funded
+    ? `
+      <div><span>Starting balance</span><strong>$25,000</strong></div>
+      <div><span>Payout eligibility</span><strong>5 x $100+ days</strong></div>
+      <div><span>Profit split</span><strong>90% trader</strong></div>
+      <div><span>Payout buffer</span><strong>None</strong></div>
+      <div><span>Daily loss limit</span><strong>None</strong></div>
+      <div><span>Consistency</span><strong>None funded</strong></div>
+      <div><span>EOD max loss</span><strong>$1,000 trail</strong></div>
+      <div><span>Max contracts</span><strong>2 mini / 20 micro</strong></div>
+    `
+    : `
+      <div><span>Starting balance</span><strong>$25,000</strong></div>
+      <div><span>Profit target</span><strong>$1,250</strong></div>
+      <div><span>EOD max loss</span><strong>$1,000</strong></div>
+      <div><span>Daily loss limit</span><strong>None</strong></div>
+      <div><span>Max contracts</span><strong>2 mini / 20 micro</strong></div>
+      <div><span>Consistency</span><strong>50%</strong></div>
+    `;
 }
 
 function renderTradeRows() {
@@ -401,6 +582,16 @@ function getMetrics() {
 
   const dayProfits = [...dayPnlMap.values()].filter((value) => value > 0);
   const winningDays = [...dayPnlMap.values()].filter((value) => value > 0).length;
+  const lastPayout = state.payouts.length ? state.payouts[state.payouts.length - 1] : null;
+  const lastPayoutDate = lastPayout?.date || "";
+  const lastPayoutCutoffDate = lastPayout?.cutoffDate || lastPayoutDate;
+  const payoutCycleDays = days.filter((day) => !lastPayoutCutoffDate || day.date > lastPayoutCutoffDate);
+  const payoutCutoffDate = payoutCycleDays.length ? payoutCycleDays[payoutCycleDays.length - 1].date : lastPayoutCutoffDate;
+  const payoutCycleProfit = payoutCycleDays.reduce((total, day) => total + sumTrades(day.trades), 0);
+  const payoutQualifyingDays = payoutCycleDays.filter((day) => sumTrades(day.trades) >= RULES.payoutMinDayProfit).length;
+  const payoutRequestMax = Math.min(RULES.payoutMaxRequest || Infinity, Math.max(0, payoutCycleProfit * RULES.payoutMaxProfitShare));
+  const payoutTraderShare = Math.max(0, payoutRequestMax * RULES.payoutSplit);
+  const payoutEligible = RULES.mode === "funded" && payoutQualifyingDays >= RULES.payoutMinProfitDays && payoutCycleProfit > 0 && payoutRequestMax >= RULES.payoutMinRequest;
   const largestProfitDay = dayProfits.length ? Math.max(...dayProfits) : 0;
   const accountProfit = balance - RULES.startingBalance;
   const consistency = accountProfit > 0 ? largestProfitDay / accountProfit : 0;
@@ -432,10 +623,18 @@ function getMetrics() {
     accountProfit,
     floor,
     targetRemaining: Math.max(0, RULES.profitTarget - accountProfit),
-    targetProgress: clamp(accountProfit / RULES.profitTarget, 0, 1),
+    targetProgress: RULES.profitTarget ? clamp(accountProfit / RULES.profitTarget, 0, 1) : 0,
     drawdownRoom: balance - floor,
     tradeDays: dayPnlMap.size,
     winningDays,
+    payoutCycleProfit,
+    payoutQualifyingDays,
+    payoutTraderShare,
+    payoutRequestMax,
+    payoutEligible,
+    lastPayoutDate,
+    lastPayoutCutoffDate,
+    payoutCutoffDate,
     dailyWinRate: dayPnlMap.size ? winningDays / dayPnlMap.size : 0,
     tradeCount: days.reduce((total, day) => total + day.trades.length, 0),
     largestProfitDay,
@@ -454,20 +653,24 @@ function getMetrics() {
     failed: violated || balance <= floor,
     breachDay,
     allSizesOk,
-    passReady: accountProfit >= RULES.profitTarget && dayPnlMap.size >= RULES.minTradingDays && !violated && allSizesOk && consistencyPassReady
+    passReady: RULES.mode === "evaluation" && accountProfit >= RULES.profitTarget && dayPnlMap.size >= RULES.minTradingDays && !violated && allSizesOk && consistencyPassReady
   };
 }
 
 function renderStats(metrics) {
+  const funded = RULES.mode === "funded";
   els.currentBalance.textContent = currency.format(metrics.balance);
   els.balanceChange.textContent = `${currency.format(metrics.accountProfit)} ${metrics.accountProfit >= 0 ? "profit" : "drawdown"}`;
   els.balanceChange.className = `metric-note ${metrics.accountProfit < 0 ? "money-neg" : ""}`;
-  els.targetRemaining.textContent = currency.format(metrics.targetRemaining);
+  els.targetRemaining.parentElement.querySelector(".eyebrow").textContent = funded ? "Trader payout est." : "Target remaining";
+  els.targetRemaining.textContent = funded ? currency.format(metrics.payoutTraderShare) : currency.format(metrics.targetRemaining);
+  els.targetRemaining.nextElementSibling.textContent = funded ? "90% of eligible request" : "Pass target: $26,250.00";
   els.drawdownFloor.textContent = currency.format(metrics.floor);
   els.drawdownRoom.textContent = `${currency.format(metrics.drawdownRoom)} room`;
   els.drawdownRoom.className = `metric-note ${metrics.drawdownRoom <= 0 ? "money-neg" : ""}`;
-  els.targetPercent.textContent = `${Math.round(metrics.targetProgress * 100)}%`;
-  els.progressRing.style.setProperty("--progress", `${metrics.targetProgress * 360}deg`);
+  const ringProgress = funded ? clamp(metrics.payoutQualifyingDays / RULES.payoutMinProfitDays, 0, 1) : metrics.targetProgress;
+  els.targetPercent.textContent = funded ? `${metrics.payoutQualifyingDays}/${RULES.payoutMinProfitDays}` : `${Math.round(metrics.targetProgress * 100)}%`;
+  els.progressRing.style.setProperty("--progress", `${ringProgress * 360}deg`);
   els.targetProgressLabel.textContent = `${currency.format(Math.max(0, metrics.accountProfit))} / ${currency.format(RULES.profitTarget)}`;
   const targetBalance = RULES.startingBalance + RULES.profitTarget;
   const rangeMin = Math.min(metrics.floor, RULES.startingBalance, metrics.balance);
@@ -496,15 +699,19 @@ function renderStats(metrics) {
     ? `Your EOD balance ${metrics.breachDay ? `on ${metrics.breachDay} ` : ""}hit ${currency.format(metrics.balance)} against a trailing threshold of ${currency.format(metrics.floor)}.`
     : "";
   // Challenge pass alert experiment: remove this block with matching HTML/CSS to revert.
-  els.passAlert.hidden = !metrics.passReady || metrics.failed;
+  els.passAlert.hidden = funded || !metrics.passReady || metrics.failed;
   els.passAlertText.textContent = metrics.passReady && !metrics.failed
     ? `Target hit at ${currency.format(metrics.balance)} with ${metrics.tradeDays} trading days logged, position size respected, drawdown intact, and consistency inside the pass rules.`
     : "";
-  els.consistencyPercent.textContent = metrics.accountProfit > 0 ? `${Math.round(metrics.consistency * 100)}%` : "0%";
-  els.consistencyNote.textContent = metrics.largestProfitDay
-    ? `Largest winning day: ${currency.format(metrics.largestProfitDay)}`
-    : "Largest day must stay at or below 50%";
+  els.consistencyCardLabel.textContent = funded ? "Payout split" : "Consistency";
+  els.consistencyPercent.textContent = funded ? "90%" : metrics.accountProfit > 0 ? `${Math.round(metrics.consistency * 100)}%` : "0%";
+  els.consistencyNote.textContent = funded
+    ? `${currency.format(metrics.payoutTraderShare)} trader share est.`
+    : metrics.largestProfitDay
+      ? `Largest winning day: ${currency.format(metrics.largestProfitDay)}`
+      : "Largest day must stay at or below 50%";
   els.consistencyNote.className = `metric-note ${metrics.consistencyOk ? "" : "money-neg"}`;
+  renderFundedPanel(metrics);
   renderConsistencyPanel(metrics);
   els.tradeDayCount.textContent = `${metrics.tradeDays} days / ${metrics.tradeCount} trades`;
   els.journalSummary.textContent = metrics.days.length
@@ -513,6 +720,7 @@ function renderStats(metrics) {
 }
 
 function renderConsistencyPanel(metrics) {
+  if (RULES.mode !== "evaluation") return;
   const usage = metrics.accountProfit > 0 ? metrics.consistency / RULES.consistencyLimit : 0;
   const usagePercent = clamp(usage, 0, 1.4) * 100;
   const allowedDay = metrics.accountProfit >= RULES.profitTarget
@@ -550,6 +758,23 @@ function renderConsistencyPanel(metrics) {
   }
 }
 
+// Account mode experiment: funded payout overview renderer, remove with matching HTML/CSS to revert.
+function renderFundedPanel(metrics) {
+  if (RULES.mode !== "funded") return;
+  const progress = clamp(metrics.payoutQualifyingDays / RULES.payoutMinProfitDays, 0, 1);
+  els.fundedPayoutLabel.textContent = `${currency.format(metrics.payoutTraderShare)} trader est.`;
+  els.fundedQualifyingDays.textContent = `${metrics.payoutQualifyingDays} / ${RULES.payoutMinProfitDays}`;
+  els.fundedCycleProfit.textContent = currency.format(metrics.payoutCycleProfit);
+  els.fundedCycleProfit.className = metrics.payoutCycleProfit >= 0 ? "money-pos" : "money-neg";
+  els.fundedPayoutStatus.textContent = metrics.payoutEligible ? "Eligible" : "Building";
+  els.fundedPayoutStatus.className = metrics.payoutEligible ? "money-pos" : "";
+  els.fundedPayoutFill.style.width = `${progress * 100}%`;
+  els.fundedPayoutTrackLabel.textContent = `${metrics.payoutQualifyingDays} of ${RULES.payoutMinProfitDays} qualifying days`;
+  els.fundedPayoutExplanation.textContent = metrics.payoutEligible
+    ? `Payout-ready. Max request is ${currency.format(metrics.payoutRequestMax)} and estimated 90% trader share is ${currency.format(metrics.payoutTraderShare)}.`
+    : `Need 5 separate $100+ profit days, positive cycle profit, and at least a ${currency.format(RULES.payoutMinRequest)} request.`;
+}
+
 function renderObjectives(metrics) {
   const objectives = buildObjectives(metrics);
   const html = objectives.map(renderObjective).join("");
@@ -580,6 +805,35 @@ function placeTargetMarkerLabels(drawdownPercent, startPercent, currentPercent) 
 }
 
 function buildObjectives(metrics) {
+  if (RULES.mode === "funded") {
+    return [
+      {
+        title: "Protect funded account",
+        detail: `Current trailing threshold is ${currency.format(metrics.floor)}`,
+        state: metrics.drawdownOk ? "pass" : "fail"
+      },
+      {
+        title: "Build payout days",
+        detail: `${metrics.payoutQualifyingDays} of ${RULES.payoutMinProfitDays} days at ${currency.format(RULES.payoutMinDayProfit)}+ profit`,
+        state: metrics.payoutQualifyingDays >= RULES.payoutMinProfitDays ? "pass" : "pending"
+      },
+      {
+        title: "Stay net positive this cycle",
+        detail: `Cycle profit is ${currency.format(metrics.payoutCycleProfit)}`,
+        state: metrics.payoutCycleProfit > 0 ? "pass" : "pending"
+      },
+      {
+        title: "Respect max position size",
+        detail: `Limit: ${RULES.maxMini} minis or ${RULES.maxMicro} micros`,
+        state: metrics.allSizesOk ? "pass" : "fail"
+      },
+      {
+        title: "Payout status",
+        detail: metrics.payoutEligible ? `${currency.format(metrics.payoutTraderShare)} estimated trader payout from a ${currency.format(metrics.payoutRequestMax)} request` : "Not payout-ready yet",
+        state: metrics.payoutEligible ? "pass" : "pending"
+      }
+    ];
+  }
   const objectives = [
     {
       title: "Reach the $1,250 target",
@@ -673,37 +927,68 @@ function renderDailyNotes(metrics) {
     return;
   }
 
-  els.dailyNotesList.innerHTML = [...metrics.dayMetrics].reverse().map((day) => {
-    const dayResultClass = day.pnl >= 0 ? "money-pos" : "money-neg";
-    const tradeItems = day.trades.map((trade, index) => {
-      const resultClass = trade.pnl >= 0 ? "money-pos" : "money-neg";
-      return `
-        <details class="trade-review">
-          <summary>
-            <span>Trade ${index + 1}: ${escapeHtml(trade.instrument || "Market")} ${escapeHtml(trade.direction)}</span>
-            <strong class="${resultClass}">${currency.format(trade.pnl)}</strong>
-          </summary>
-          ${renderTradeNoteTemplate(trade)}
-        </details>
-      `;
-    }).join("");
+  const months = new Map();
+  metrics.dayMetrics.forEach((day) => {
+    const monthKey = day.date.slice(0, 7);
+    if (!months.has(monthKey)) months.set(monthKey, []);
+    months.get(monthKey).push(day);
+  });
 
+  els.dailyNotesList.innerHTML = [...months.entries()].reverse().map(([monthKey, monthDays]) => {
+    const sortedDays = [...monthDays].sort((a, b) => b.date.localeCompare(a.date));
+    const monthPnl = sortedDays.reduce((total, day) => total + day.pnl, 0);
+    const monthTrades = sortedDays.reduce((total, day) => total + day.trades.length, 0);
+    const monthWins = sortedDays.reduce((total, day) => total + day.winningTrades, 0);
+    const monthWinRate = monthTrades ? monthWins / monthTrades : 0;
+    const monthResultClass = monthPnl >= 0 ? "money-pos" : "money-neg";
+    const dayItems = sortedDays.map(renderDailyNoteDay).join("");
     return `
-      <details class="daily-note-day">
+      <details class="daily-note-month">
         <summary>
           <span>
-            <strong>${formatShortDate(day.date)}</strong>
-            <small>${day.trades.length} trades - ${formatPercent(day.tradeWinRate)} trade win rate</small>
+            <strong>${formatMonthLabel(monthKey)}</strong>
+            <small>${sortedDays.length} trade ${sortedDays.length === 1 ? "day" : "days"} - ${monthTrades} trades - ${formatPercent(monthWinRate)} trade win rate</small>
           </span>
-          <strong class="${dayResultClass}">${currency.format(day.pnl)}</strong>
+          <strong class="${monthResultClass}">${currency.format(monthPnl)}</strong>
         </summary>
-        <div class="daily-note-body">
-          ${day.notes ? `<p class="day-note-copy">${escapeHtml(day.notes)}</p>` : ""}
-          <div class="daily-trade-reviews">${tradeItems}</div>
+        <div class="daily-month-body">
+          ${dayItems}
         </div>
       </details>
     `;
   }).join("");
+}
+
+function renderDailyNoteDay(day) {
+  const dayResultClass = day.pnl >= 0 ? "money-pos" : "money-neg";
+  const tradeItems = day.trades.map((trade, index) => {
+    const resultClass = trade.pnl >= 0 ? "money-pos" : "money-neg";
+    return `
+      <details class="trade-review">
+        <summary>
+          <span>Trade ${index + 1}: ${escapeHtml(trade.instrument || "Market")} ${escapeHtml(trade.direction)}</span>
+          <strong class="${resultClass}">${currency.format(trade.pnl)}</strong>
+        </summary>
+        ${renderTradeNoteTemplate(trade)}
+      </details>
+    `;
+  }).join("");
+
+  return `
+    <details class="daily-note-day">
+      <summary>
+        <span>
+          <strong>${formatShortDate(day.date)}</strong>
+          <small>${day.trades.length} trades - ${formatPercent(day.tradeWinRate)} trade win rate</small>
+        </span>
+        <strong class="${dayResultClass}">${currency.format(day.pnl)}</strong>
+      </summary>
+      <div class="daily-note-body">
+        ${day.notes ? `<p class="day-note-copy">${escapeHtml(day.notes)}</p>` : ""}
+        <div class="daily-trade-reviews">${tradeItems}</div>
+      </div>
+    </details>
+  `;
 }
 
 function renderTradeNoteTemplate(trade) {
@@ -836,6 +1121,33 @@ function renderPersonalRules() {
       <button class="icon-button" type="button" data-rule-delete="${rule.id}" title="Delete rule">x</button>
     </div>
   `).join("");
+}
+
+// Account mode experiment: payout page renderer, remove with matching HTML/CSS to revert.
+function renderPayout(metrics) {
+  if (RULES.mode !== "funded") return;
+  els.payoutEligibilityPill.textContent = metrics.payoutEligible ? "Eligible" : "Not eligible";
+  els.payoutEligibilityPill.className = `pill ${metrics.payoutEligible ? "money-pos" : ""}`;
+  els.recordPayout.disabled = !metrics.payoutEligible;
+  els.payoutQualifyingDays.textContent = `${metrics.payoutQualifyingDays} / ${RULES.payoutMinProfitDays}`;
+  els.payoutCycleProfit.textContent = currency.format(metrics.payoutCycleProfit);
+  els.payoutCycleProfit.className = metrics.payoutCycleProfit >= 0 ? "money-pos" : "money-neg";
+  els.payoutTraderShare.textContent = currency.format(metrics.payoutTraderShare);
+  els.payoutLastDate.textContent = metrics.lastPayoutDate ? `${metrics.lastPayoutDate} / thru ${metrics.lastPayoutCutoffDate}` : "None";
+  els.payoutHelp.textContent = metrics.payoutEligible
+    ? `You can record a simulated ${currency.format(metrics.payoutRequestMax)} request. Estimated trader share is ${currency.format(metrics.payoutTraderShare)}.`
+    : `Need ${RULES.payoutMinProfitDays} separate ${currency.format(RULES.payoutMinDayProfit)}+ days, positive cycle profit, and a ${currency.format(RULES.payoutMinRequest)} minimum request.`;
+  els.payoutHistory.innerHTML = state.payouts.length
+    ? [...state.payouts].reverse().map((payout) => `
+      <div class="objective pass">
+        <div class="icon">OK</div>
+        <div>
+          <strong>${escapeHtml(payout.date)}</strong>
+          <span>${currency.format(payout.traderShare)} trader share from a ${currency.format(payout.request || payout.gross)} request, cycle through ${escapeHtml(payout.cutoffDate || payout.date)}</span>
+        </div>
+      </div>
+    `).join("")
+    : '<div class="daily-notes-empty">No simulated payouts recorded yet.</div>';
 }
 
 function shiftMonth(amount) {
@@ -1050,6 +1362,31 @@ function saveTradeNotes() {
   localStorage.setItem(RULES.tradeNotesKey, JSON.stringify(state.tradeNotes));
 }
 
+// Account mode experiment: remove these storage helpers with RULE_SETS/MODE_KEY to revert.
+function loadAccountMode() {
+  try {
+    const mode = localStorage.getItem(MODE_KEY);
+    return RULE_SETS[mode] ? mode : "evaluation";
+  } catch {
+    return "evaluation";
+  }
+}
+
+function loadPayouts() {
+  try {
+    const raw = localStorage.getItem(RULES.payoutKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePayouts() {
+  localStorage.setItem(RULES.payoutKey, JSON.stringify(state.payouts));
+}
+
 function parseCsv(text) {
   const rows = splitCsv(text);
   const [header, ...dataRows] = rows.filter((row) => row.some(Boolean));
@@ -1135,6 +1472,11 @@ function yFor(value, pad, plotH, min, max) {
 function formatShortDate(value) {
   const date = new Date(`${value}T00:00:00`);
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatMonthLabel(value) {
+  const date = new Date(`${value}-01T00:00:00`);
+  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
 function toDateKey(date) {

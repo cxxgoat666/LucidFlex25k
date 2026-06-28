@@ -185,6 +185,8 @@ h3 { font-size: 1.08rem; }
 .calendar-day,
 .personal-rule,
 .rules-grid div,
+.funded-progress-grid div,
+.daily-note-month,
 .daily-note-day,
 .trade-review,
 .modal-panel {
@@ -213,6 +215,8 @@ h3 { font-size: 1.08rem; }
 .calendar-day::before,
 .personal-rule::before,
 .rules-grid div::before,
+.funded-progress-grid div::before,
+.daily-note-month::before,
 .daily-note-day::before,
 .trade-review::before,
 .modal-panel::before {
@@ -255,6 +259,8 @@ h3 { font-size: 1.08rem; }
 .calendar-day::after,
 .personal-rule::after,
 .rules-grid div::after,
+.funded-progress-grid div::after,
+.daily-note-month::after,
 .daily-note-day::after,
 .trade-review::after,
 .modal-panel::after {
@@ -311,6 +317,30 @@ main {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.account-switch {
+  display: inline-flex;
+  min-height: 40px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(13, 18, 19, 0.72);
+}
+
+.account-switch button {
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 11px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.account-switch button.active {
+  background: var(--green);
+  color: #07100c;
 }
 
 .ghost-button,
@@ -438,7 +468,8 @@ main {
 
 .dashboard-grid,
 .journal-layout,
-.rules-layout {
+.rules-layout,
+.payout-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(310px, 0.85fr);
   gap: 14px;
@@ -538,6 +569,42 @@ main {
   margin: 12px 0 0;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.funded-progress-panel {
+  margin-bottom: 14px;
+}
+
+.funded-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.funded-progress-grid div {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+
+.funded-progress-grid span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.funded-progress-grid strong {
+  font-size: clamp(1.1rem, 2vw, 1.45rem);
+}
+
+.funded-track div {
+  background: linear-gradient(90deg, var(--green), var(--cyan));
 }
 
 .failure-alert,
@@ -1074,6 +1141,7 @@ th {
   background: var(--panel-soft);
 }
 
+.daily-note-month,
 .daily-note-day,
 .trade-review {
   border: 1px solid var(--line);
@@ -1081,6 +1149,13 @@ th {
   background: rgba(13, 18, 19, 0.7);
 }
 
+.daily-note-month {
+  background:
+    linear-gradient(135deg, rgba(57, 217, 138, 0.08), rgba(13, 18, 19, 0.78)),
+    var(--panel-soft);
+}
+
+.daily-note-month > summary,
 .daily-note-day > summary,
 .trade-review > summary {
   display: flex;
@@ -1093,11 +1168,13 @@ th {
   list-style: none;
 }
 
+.daily-note-month > summary::-webkit-details-marker,
 .daily-note-day > summary::-webkit-details-marker,
 .trade-review > summary::-webkit-details-marker {
   display: none;
 }
 
+.daily-note-month > summary::before,
 .daily-note-day > summary::before,
 .trade-review > summary::before {
   content: "+";
@@ -1113,11 +1190,13 @@ th {
   flex: 0 0 auto;
 }
 
+.daily-note-month[open] > summary::before,
 .daily-note-day[open] > summary::before,
 .trade-review[open] > summary::before {
   content: "-";
 }
 
+.daily-note-month > summary span,
 .daily-note-day > summary span {
   display: grid;
   gap: 4px;
@@ -1130,9 +1209,16 @@ th {
   margin-right: auto;
 }
 
+.daily-note-month small,
 .daily-note-day small {
   color: var(--muted);
   font-size: 0.84rem;
+}
+
+.daily-month-body {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
 }
 
 .daily-note-body {
@@ -1316,7 +1402,8 @@ textarea:focus {
   .dashboard-grid,
   .entry-layout,
   .journal-layout,
-  .rules-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rules-layout,
+  .payout-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .primary-status,
   .chart-panel,
   .entry-panel,
@@ -1348,13 +1435,15 @@ textarea:focus {
   .entry-layout,
   .journal-layout,
   .rules-layout,
+  .payout-layout,
   .trade-form,
   .nav-list,
   .rules-grid,
   .calendar-grid,
   .trade-review-template { grid-template-columns: 1fr; }
   .modal-day-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .consistency-grid { grid-template-columns: 1fr; }
+  .consistency-grid,
+  .funded-progress-grid { grid-template-columns: 1fr; }
   .wide { grid-column: auto; }
   .target-scale { grid-template-columns: 1fr; }
   .target-scale span,
